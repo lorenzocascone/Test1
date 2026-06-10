@@ -458,6 +458,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
 /* ═══════════════════════ MOVE LIST ═══════════════════════ */
 #moves-panel { display: flex; flex-direction: column; min-height: 200px; }
 #move-scroll {
+  position: relative;
   overflow-y: auto;
   max-height: calc(var(--bsz) * 0.52);
   min-height: 140px;
@@ -2039,8 +2040,14 @@ function renderMoves() {
     }
   }
   $('ply-count').textContent = sanRecord.length ? Math.ceil(sanRecord.length / 2) + ' moves' : '';
+  // scroll only the move-list container, never the page
   const cur = ml.querySelector('.cur');
-  if (cur) cur.scrollIntoView({ block: 'nearest' });
+  if (cur) {
+    const sc = $('move-scroll');
+    const top = cur.offsetTop, bot = top + cur.offsetHeight;
+    if (top < sc.scrollTop) sc.scrollTop = top;
+    else if (bot > sc.scrollTop + sc.clientHeight) sc.scrollTop = bot - sc.clientHeight;
+  }
   $('nav-start').disabled = $('nav-prev').disabled = viewPly === 0;
   $('nav-next').disabled = $('nav-end').disabled = isLive();
 }
