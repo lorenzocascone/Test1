@@ -447,6 +447,43 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
 }
 #btn-start:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(212,175,111,0.4); }
 #btn-start.nudge { animation: nudge .45s; }
+#name-row { margin-bottom: 14px; }
+#name-input {
+  width: 100%; max-width: 230px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-align: center;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+#name-input:focus { border-color: var(--gold-dim); }
+#name-input::placeholder { color: var(--dim); }
+#name-err { font-size: 0.68rem; color: var(--red); min-height: 1.2em; margin-top: 6px; }
+
+/* ═══════════════════════ LEADERBOARD ═══════════════════════ */
+#lb-list { display: flex; flex-direction: column; gap: 2px; }
+.lb-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0,1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 7px;
+  border-radius: 7px;
+  font-size: 0.76rem;
+}
+.lb-row.me { background: rgba(212,175,111,0.1); box-shadow: inset 0 0 0 1px rgba(212,175,111,0.22); }
+.lb-rank { color: var(--dim); font-size: 0.66rem; font-variant-numeric: tabular-nums; }
+.lb-name { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-wdl { color: var(--muted); font-size: 0.65rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lb-pts { color: var(--gold); font-weight: 600; font-variant-numeric: tabular-nums; }
+#lb-empty { font-size: 0.72rem; color: var(--dim); padding: 4px 0 2px; }
+#lb-clear { color: var(--dim); font-size: 0.78rem; line-height: 1; transition: color .2s; }
+#lb-clear:hover { color: var(--red); }
 @keyframes nudge { 30% { transform: scale(1.08); } 60% { transform: scale(0.96); } }
 
 /* ═══════════════════════ TOOLBAR ═══════════════════════ */
@@ -746,6 +783,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
           <div id="start-card">
             <div id="start-title">Ready to play?</div>
             <div id="start-sub"></div>
+            <div id="name-row">
+              <input id="name-input" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
+              <div id="name-err"></div>
+            </div>
             <button id="btn-start">▶ Start Game</button>
           </div>
         </div>
@@ -784,6 +825,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
         <div id="eng-pv">—</div>
       </div>
     </div>
+
+    <div class="panel">
+      <div class="panel-head">Leaderboard<button id="lb-clear" title="Reset leaderboard">✕</button></div>
+      <div class="panel-body"><div id="lb-list"></div></div>
+    </div>
   </aside>
 </main>
 
@@ -804,6 +850,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
       <div><b id="ovs-moves">0</b>Moves</div>
       <div><b id="ovs-time">0:00</b>Duration</div>
       <div><b id="ovs-mode">Club</b>Opponent</div>
+      <div><b id="ovs-pts">—</b>Points</div>
     </div>
     <div class="modal-btns">
       <button class="modal-btn" id="btn-review">Review board</button>
@@ -1812,7 +1859,7 @@ const MODES = {
 };
 
 /* ── settings (persisted) ────────────────────────────────────────────────── */
-const settings = { mode: 'club', side: 'w', tc: '600', theme: 'walnut', sound: true };
+const settings = { mode: 'club', side: 'w', tc: '600', theme: 'walnut', sound: true, username: 'Player' };
 try {
   // copy only known keys and only valid values — localStorage is not trusted state
   const raw = JSON.parse(localStorage.getItem('regicide') || '{}');
@@ -1821,9 +1868,98 @@ try {
   if (['600', '300', 'inf'].includes(raw.tc)) settings.tc = raw.tc;
   if (['walnut', 'midnight', 'emerald', 'slate', 'lovecraft'].includes(raw.theme)) settings.theme = raw.theme;
   if (typeof raw.sound === 'boolean') settings.sound = raw.sound;
+  if (typeof raw.username === 'string') settings.username = raw.username;  // validated below
 } catch (e) { /* fresh start */ }
 function saveSettings() {
   try { localStorage.setItem('regicide', JSON.stringify(settings)); } catch (e) { /* private mode */ }
+}
+
+/* ── username & leaderboard ──────────────────────────────────────────────── */
+// Whitelist sanitiser: anything outside this set (escapes, quotes, angle
+// brackets, control chars) is stripped before the name is used anywhere.
+const NAME_RE = /[^A-Za-z0-9 _.\-]/g;
+// Normalised-substring blocklist (leetspeak folded). Substring matching can
+// have rare false positives, but never false negatives on plain spellings.
+const BAD_WORDS = ['fuck','shit','cunt','bitch','pussy','cock','dick','asshole',
+  'arsehole','bastard','whore','slut','nigger','nigga','faggot','retard','twat',
+  'prick','wank','jizz','bollock','penis','vagina','nazi','hitler','kunt','fck',
+  'fock','fuk','fcuk','phuck','phuk','cnut'];
+function nameFilterForm(s) {
+  return s.toLowerCase()
+    .replace(/[0]/g, 'o').replace(/[1!|]/g, 'i').replace(/3/g, 'e')
+    .replace(/[4@]/g, 'a').replace(/[5$]/g, 's').replace(/7/g, 't')
+    .replace(/8/g, 'b').replace(/9/g, 'g').replace(/v/g, 'u')
+    .replace(/[^a-z]/g, '');
+}
+function sanitizeName(raw) {
+  const name = String(raw || '').replace(NAME_RE, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+  if (!String(raw || '').trim()) return { ok: true, name: 'Player' };
+  if (name.length < 2) return { ok: false, reason: 'Use letters, numbers, spaces, . _ -' };
+  const folded = nameFilterForm(name);
+  if (BAD_WORDS.some(w => folded.includes(w))) {
+    return { ok: false, reason: 'That name isn\u2019t allowed \u2014 pick another' };
+  }
+  return { ok: true, name };
+}
+
+// settings.username was loaded before this module's consts existed — validate now
+{
+  const sn = sanitizeName(settings.username);
+  if (!(sn.ok && sn.name === settings.username)) settings.username = 'Player';
+}
+
+const WIN_PTS = { beginner: 1, casual: 2, club: 3, master: 5 };
+function fmtPts(p) { return Number.isInteger(p) ? String(p) : p.toFixed(1); }
+function loadBoard() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('regicide-board') || '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(e => e && typeof e === 'object' &&
+      sanitizeName(e.n).ok && sanitizeName(e.n).name === e.n &&
+      [e.w, e.d, e.l, e.p].every(v => typeof v === 'number' && isFinite(v) && v >= 0)
+    ).slice(0, 200);
+  } catch (err) { return []; }
+}
+function saveBoard(b) {
+  try { localStorage.setItem('regicide-board', JSON.stringify(b)); } catch (err) { /* private mode */ }
+}
+function recordResult(outcome) {
+  if (resultRecorded) return null;
+  resultRecorded = true;
+  const pts = outcome === 'w' ? WIN_PTS[mode] : outcome === 'd' ? WIN_PTS[mode] / 2 : 0;
+  const board = loadBoard();
+  const key = settings.username.toLowerCase();
+  let e = board.find(x => x.n.toLowerCase() === key);
+  if (!e) { e = { n: settings.username, w: 0, d: 0, l: 0, p: 0 }; board.push(e); }
+  if (outcome === 'w') e.w++; else if (outcome === 'd') e.d++; else e.l++;
+  e.p += pts;
+  saveBoard(board);
+  renderLeaderboard();
+  return pts;
+}
+function renderLeaderboard() {
+  const list = $('lb-list');
+  list.textContent = '';
+  const board = loadBoard().sort((a, b) => b.p - a.p || b.w - a.w).slice(0, 8);
+  if (!board.length) {
+    const d = document.createElement('div');
+    d.id = 'lb-empty';
+    d.textContent = 'No games recorded yet \u2014 finish a game against the engine.';
+    list.appendChild(d);
+    return;
+  }
+  const me = settings.username.toLowerCase();
+  board.forEach((e, i) => {
+    const row = document.createElement('div');
+    row.className = 'lb-row' + (e.n.toLowerCase() === me ? ' me' : '');
+    for (const [cls, txt] of [['lb-rank', (i + 1) + '.'], ['lb-name', e.n],
+                              ['lb-wdl', `${e.w}W ${e.d}D ${e.l}L`], ['lb-pts', fmtPts(e.p)]]) {
+      const c = document.createElement('span');
+      c.className = cls; c.textContent = txt;   // textContent only — names never hit innerHTML
+      row.appendChild(c);
+    }
+    list.appendChild(row);
+  });
 }
 
 /* ── sound engine ────────────────────────────────────────────────────────── */
@@ -1907,6 +2043,7 @@ let moveRecord = [], infoRecord = [], sanRecord = [], snapshots = [];
 let viewPly = 0;
 let gameOver = null;
 let started = false;          // games begin only on the Start button
+let resultRecorded = false;  // one leaderboard entry per game, even after undo
 let humanTurnSince = 0;      // when the human's turn began (engine ponder credit)
 let gameStart = Date.now();
 let searchToken = 0, evalSeq = 0, lastEvalId = '', hintId = '';
@@ -2198,7 +2335,7 @@ function refreshCards() {
       $('name-' + which).textContent = 'Regicide Engine';
       $('sub-' + which).textContent = md.label + ' · ' + md.elo + ' Elo';
     } else {
-      $('name-' + which).textContent = 'You';
+      $('name-' + which).textContent = settings.username;
       $('sub-' + which).textContent = c === 'w' ? 'White' : 'Black';
     }
     const active = started && !gameOver && turnColor() === c;
@@ -2427,6 +2564,11 @@ function endGame(reason, winner) {
   const dur = Math.round((Date.now() - gameStart) / 1000);
   $('ovs-time').textContent = Math.floor(dur / 60) + ':' + String(dur % 60).padStart(2, '0');
   $('ovs-mode').textContent = mode === '2p' ? 'Human' : MODES[mode].label;
+  let pts = null;
+  if (mode !== '2p' && started) {
+    pts = recordResult(!winner ? 'd' : winner === humanColor ? 'w' : 'l');
+  }
+  $('ovs-pts').textContent = pts == null ? '\u2014' : '+' + fmtPts(pts);
   setTimeout(() => {
     $('over-modal').classList.add('open');
     if (humanWon) celebrate();
@@ -2460,6 +2602,7 @@ function setupGame() {
   $('eng-depth').textContent = $('eng-nodes').textContent = $('eng-nps').textContent = '—';
   $('eng-pv').textContent = '—';
   started = false;
+  resultRecorded = false;
   humanTurnSince = 0;
   updateStartCard();
   $('start-overlay').classList.add('show');
@@ -2472,10 +2615,23 @@ function updateStartCard() {
   $('start-sub').textContent = mode === '2p'
     ? 'Two players · hot-seat · ' + tc
     : `Regicide Engine · ${md.label} ${md.elo} Elo · You play ${humanColor === 'w' ? 'White' : 'Black'} · ${tc}`;
+  $('name-input').value = settings.username === 'Player' ? '' : settings.username;
+  $('name-err').textContent = '';
 }
 
 function startGame() {
   if (started || gameOver) return;
+  const sn = sanitizeName($('name-input').value);
+  if (!sn.ok) {
+    $('name-err').textContent = sn.reason;
+    $('name-input').focus();
+    return;
+  }
+  $('name-err').textContent = '';
+  if (settings.username !== sn.name) {
+    settings.username = sn.name; saveSettings();
+    renderLeaderboard();
+  }
   started = true;
   $('start-overlay').classList.remove('show');
   gameStart = Date.now();
@@ -2731,6 +2887,11 @@ document.querySelectorAll('.seg-btn').forEach(b => {
 $('btn-new').addEventListener('click', () => confirmIfPlaying('Abandon the current game?', setupGame));
 $('btn-rematch').addEventListener('click', () => { setupGame(); startGame(); });
 $('btn-start').addEventListener('click', startGame);
+$('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') startGame(); });
+$('lb-clear').addEventListener('click', () =>
+  ask('Reset the leaderboard? This clears all recorded results.', () => {
+    saveBoard([]); renderLeaderboard();
+  }));
 $('btn-review').addEventListener('click', () => $('over-modal').classList.remove('open'));
 $('btn-undo').addEventListener('click', undo);
 $('btn-flip').addEventListener('click', flip);
@@ -2816,6 +2977,7 @@ mode = MODES[settings.mode] ? settings.mode : 'club';
 document.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x.dataset.mode === mode));
 renderSoundBtn();
 buildBoard();
+renderLeaderboard();
 setupGame();
 
 })();
