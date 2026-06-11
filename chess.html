@@ -13,6 +13,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
+  color-scheme: dark;
   --bg0: #0a0d13;
   --bg1: #0e1219;
   --glass: rgba(255,255,255,0.032);
@@ -36,6 +37,7 @@ body[data-board="walnut"]   { --lt:#ecd9b9; --dk:#a8794b; --frame:#241409; --fra
 body[data-board="midnight"] { --lt:#dde3e8; --dk:#7b94ab; --frame:#10161f; --frame2:#22303f; }
 body[data-board="emerald"]  { --lt:#ebeed4; --dk:#6f9356; --frame:#15200f; --frame2:#28391c; }
 body[data-board="slate"]    { --lt:#bfc6d1; --dk:#646e7e; --frame:#0e1116; --frame2:#232a35; }
+body[data-board="lovecraft"] { --lt:#c6d1c0; --dk:#49604f; --frame:#0a120d; --frame2:#1d2f24; }
 
 html, body { height: 100%; }
 body {
@@ -119,10 +121,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
   border-radius: 9px;
   padding: 6px 26px 6px 11px;
   font-size: 0.72rem;
-  color: var(--muted);
-  transition: border-color .2s, color .2s;
+  color: var(--text);
+  transition: border-color .2s;
 }
-.opt-sel:hover { border-color: var(--line2); color: var(--text); }
+.opt-sel:hover { border-color: var(--line2); }
+.opt-sel option { background: #151a24; color: var(--text); }
 .icon-btn {
   width: 32px; height: 32px;
   display: grid; place-items: center;
@@ -632,6 +635,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-dim);
       <option value="midnight">Midnight</option>
       <option value="emerald">Emerald</option>
       <option value="slate">Slate</option>
+      <option value="lovecraft">Lovecraft</option>
     </select>
     <button class="icon-btn" id="sound-btn" title="Toggle sound (M)">♪</button>
   </div>
@@ -1694,7 +1698,7 @@ const $ = id => document.getElementById(id);
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 /* ── piece artwork (cburnett set, public domain) ─────────────────────────── */
-const SVG = {
+const CLASSIC = {
   wK:`<svg viewBox="0 0 45 45"><g style="fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"> <path d="M 22.5,11.63 L 22.5,6" style="fill:none; stroke:#000000; stroke-linejoin:miter;" /> <path d="M 20,8 L 25,8" style="fill:none; stroke:#000000; stroke-linejoin:miter;" /> <path d="M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25" style="fill:#ffffff; stroke:#000000; stroke-linecap:butt; stroke-linejoin:miter;" /> <path d="M 11.5,37 C 17,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 19,16 9.5,13 6.5,19.5 C 3.5,25.5 11.5,29.5 11.5,29.5 L 11.5,37 z " style="fill:#ffffff; stroke:#000000;" /> <path d="M 11.5,30 C 17,27 27,27 32.5,30" style="fill:none; stroke:#000000;" /> <path d="M 11.5,33.5 C 17,30.5 27,30.5 32.5,33.5" style="fill:none; stroke:#000000;" /> <path d="M 11.5,37 C 17,34 27,34 32.5,37" style="fill:none; stroke:#000000;" /> </g></svg>`,
   wQ:`<svg viewBox="0 0 45 45"><g style="opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"> <path d="M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z" transform="translate(-1,-1)" /> <path d="M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z" transform="translate(15.5,-5.5)" /> <path d="M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z" transform="translate(32,-1)" /> <path d="M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z" transform="translate(7,-4.5)" /> <path d="M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z" transform="translate(24,-4)" /> <path d="M 9,26 C 17.5,24.5 30,24.5 36,26 L 38,14 L 31,25 L 31,11 L 25.5,24.5 L 22.5,9.5 L 19.5,24.5 L 14,10.5 L 14,25 L 7,14 L 9,26 z " style="stroke-linecap:butt;" /> <path d="M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,31 12,33.5 C 10.5,34.5 10.5,36 10.5,36 C 9,37.5 11,38.5 11,38.5 C 17.5,39.5 27.5,39.5 34,38.5 C 34,38.5 35.5,37.5 34,36 C 34,36 34.5,34.5 33,33.5 C 32.5,31 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26 C 27.5,24.5 17.5,24.5 9,26 z " style="stroke-linecap:butt;" /> <path d="M 11.5,30 C 15,29 30,29 33.5,30" style="fill:none;" /> <path d="M 12,33.5 C 18,32.5 27,32.5 33,33.5" style="fill:none;" /> </g></svg>`,
   wR:`<svg viewBox="0 0 45 45"><g style="opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"> <path d="M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z " style="stroke-linecap:butt;" /> <path d="M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z " style="stroke-linecap:butt;" /> <path d="M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14" style="stroke-linecap:butt;" /> <path d="M 34,14 L 31,17 L 14,17 L 11,14" /> <path d="M 31,17 L 31,29.5 L 14,29.5 L 14,17" style="stroke-linecap:butt; stroke-linejoin:miter;" /> <path d="M 31,29.5 L 32.5,32 L 12.5,32 L 14,29.5" /> <path d="M 11,14 L 34,14" style="fill:none; stroke:#000000; stroke-linejoin:miter;" /> </g></svg>`,
@@ -1708,6 +1712,22 @@ const SVG = {
   bN:`<svg viewBox="0 0 45 45"><g style="opacity:1; fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"> <path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18" style="fill:#000000; stroke:#000000;" /> <path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10" style="fill:#000000; stroke:#000000;" /> <path d="M 9.5 25.5 A 0.5 0.5 0 1 1 8.5,25.5 A 0.5 0.5 0 1 1 9.5 25.5 z" style="fill:#ffffff; stroke:#ffffff;" /> <path d="M 15 15.5 A 0.5 1.5 0 1 1 14,15.5 A 0.5 1.5 0 1 1 15 15.5 z" transform="matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)" style="fill:#ffffff; stroke:#ffffff;" /> <path d="M 24.55,10.4 L 24.1,11.85 L 24.6,12 C 27.75,13 30.25,14.49 32.5,18.75 C 34.75,23.01 35.75,29.06 35.25,39 L 35.2,39.5 L 37.45,39.5 L 37.5,39 C 38,28.94 36.62,22.15 34.25,17.66 C 31.88,13.17 28.46,11.02 25.06,10.5 L 24.55,10.4 z " style="fill:#ffffff; stroke:none;" /> </g></svg>`,
   bP:`<svg viewBox="0 0 45 45"><path d="M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z " style="opacity:1; fill:#000000; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;" /></svg>`,
 };
+/* eldritch piece set for the Lovecraft theme */
+const LOVECRAFT = {
+  wK:`<svg viewBox="0 0 45 45"><g fill="#efeada" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 15 C9 12.5 6.5 7.5 8.5 2.5 C13.5 5 16 9.5 15.8 14 Z" stroke="#000"/><path d="M30.5 15 C36 12.5 38.5 7.5 36.5 2.5 C31.5 5 29 9.5 29.2 14 Z" stroke="#000"/><path d="M17.5 23.5 C13.5 26.5 11.5 31.5 11.5 36 L11.5 39 L33.5 39 L33.5 36 C33.5 31.5 31.5 26.5 27.5 23.5 Z"/><path d="M13.2 35.2 C19 33.4 26 33.4 31.8 35.2" fill="none" stroke="#3c5246" stroke-width="1.2"/><path d="M22.5 5.5 C16.5 5.5 13 10 13 15.5 C13 19 14.5 21.6 17 23.2 L28 23.2 C30.5 21.6 32 19 32 15.5 C32 10 28.5 5.5 22.5 5.5 Z" stroke="#000"/><path d="M16.2 22.8 Q14.5 28 11 30.5 Q15.5 31 17.8 27.5 Q18.8 25.3 18.3 22.8 Z" stroke="#000"/><path d="M20.3 23.2 Q19.2 29.5 16.8 32.8 Q21 32.5 22.3 28.6 Q23 26 22.4 23.2 Z" stroke="#000"/><path d="M24.7 23.2 Q25.8 29.5 28.2 32.8 Q24 32.5 22.7 28.6 Q22 26 22.6 23.2 Z" stroke="#000"/><path d="M28.8 22.8 Q30.5 28 34 30.5 Q29.5 31 27.2 27.5 Q26.2 25.3 26.7 22.8 Z" stroke="#000"/><circle cx="18.7" cy="14.8" r="1.7" fill="#1d6b4d" stroke-width="0.8"/><circle cx="26.3" cy="14.8" r="1.7" fill="#1d6b4d" stroke-width="0.8"/></g></svg>`,
+  wQ:`<svg viewBox="0 0 45 45"><g fill="#efeada" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 9.5 Q22 5 24 2.8 M17.6 10.8 Q14 6.5 14.8 3 M27.4 10.8 Q31 6.5 30.2 3 M13.8 13.2 Q9 10 8.6 5.6 M31.2 13.2 Q36 10 36.4 5.6" fill="none" stroke-width="1.7"/><circle cx="24" cy="2.8" r="1.5"/><circle cx="14.8" cy="3" r="1.5"/><circle cx="30.2" cy="3" r="1.5"/><circle cx="8.6" cy="5.6" r="1.5"/><circle cx="36.4" cy="5.6" r="1.5"/><path d="M19 18.5 C15.5 23 13.5 28.5 12.6 34.5 C12.3 36.3 12.2 37.6 12.2 38.6 Q14.2 37.1 16.4 38.6 Q18.6 40.1 20.5 38.6 Q22.5 37.1 24.5 38.6 Q26.4 40.1 28.6 38.6 Q30.8 37.1 32.8 38.6 C32.8 37.6 32.7 36.3 32.4 34.5 C31.5 28.5 29.5 23 26 18.5 Z"/><path d="M16.2 28.4 Q22.5 30.8 28.8 28.4" fill="none" stroke="#3c5246" stroke-width="1.2"/><circle cx="22.5" cy="14.5" r="6" stroke="#000"/><circle cx="19.7" cy="14.8" r="1.35" fill="#1d6b4d" stroke-width="0.8"/><circle cx="25.3" cy="14.8" r="1.35" fill="#1d6b4d" stroke-width="0.8"/><circle cx="22.5" cy="11.9" r="1.2" fill="#1d6b4d" stroke-width="0.8"/></g></svg>`,
+  wR:`<svg viewBox="0 0 45 45"><g fill="#efeada" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 39 L34.5 39 L32.5 35.8 L12.5 35.8 Z"/><path d="M14.2 35.8 L15.8 31.5 L14.8 14 L12.6 12 L14.2 6.2 L17.8 9 L20.2 4.2 L22.9 8 L25.6 3.8 L28 8.6 L31.4 5.8 L32.4 12 L30.2 14 L29.2 31.5 L30.8 35.8 Z"/><path d="M22.5 17.5 C25.2 19.2 26.4 21.4 26.4 23.6 C26.4 25.8 25.2 28 22.5 29.7 C19.8 28 18.6 25.8 18.6 23.6 C18.6 21.4 19.8 19.2 22.5 17.5 Z" fill="#1d6b4d" stroke-width="1.1"/><path d="M22.5 19.8 C23.1 21.2 23.1 26 22.5 27.4 C21.9 26 21.9 21.2 22.5 19.8 Z" fill="#000" stroke="none"/><path d="M17.2 32.5 L19.3 30.2 M28 31.8 L26 29.6 M16.4 12.6 L18.4 14.8" fill="none" stroke="#3c5246" stroke-width="1.1"/></g></svg>`,
+  wB:`<svg viewBox="0 0 45 45"><g fill="#efeada" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 39 L34 39 L32 35.6 L13 35.6 Z"/><path d="M22.5 4.8 C18 7.4 15.6 11.4 15.6 16 L15.6 25.6 C13.6 27.2 12.2 29.4 12.2 31.8 L12.2 33.6 L32.8 33.6 L32.8 31.8 C32.8 29.4 31.4 27.2 29.4 25.6 L29.4 16 C29.4 11.4 27 7.4 22.5 4.8 Z"/><path d="M22.5 8.8 C19.6 10.8 18.1 13.4 18.1 16.4 C18.1 18.5 19.1 20.2 20.6 21.2 L24.4 21.2 C25.9 20.2 26.9 18.5 26.9 16.4 C26.9 13.4 25.4 10.8 22.5 8.8 Z" fill="#13201a" stroke-width="1.1"/><circle cx="20.7" cy="15.8" r="1.15" fill="#1d6b4d" stroke="none"/><circle cx="24.3" cy="15.8" r="1.15" fill="#1d6b4d" stroke="none"/><path d="M16.2 26.4 L28.8 26.4 M24.6 26.4 Q25.2 29.4 23.8 31.6" fill="none" stroke="#3c5246" stroke-width="1.2"/></g></svg>`,
+  wN:`<svg viewBox="0 0 45 45"><g fill="#efeada" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 39 L35 39 L33 35.8 L12 35.8 Z"/><path d="M13.5 35.8 C11.2 33 11.8 29.4 14.8 28 C13.4 21.4 15.6 14.8 20.4 10.6 C22.3 8.9 23.2 6.9 22.6 4.6 L21.6 2.6 C26.2 2.2 29.8 4.9 30.6 8.9 C31.3 12.4 29.8 15.6 27.2 17.9 C23.8 20.9 22 24.5 22.5 28.6 C26.4 28.2 30.2 30.3 31.2 34.2 L31.6 35.8 Z"/><path d="M24.8 3.4 Q26.6 1.4 29 1.8 Q28 3.4 28.4 5.2 Z" stroke="#000"/><path d="M22.4 5.6 Q25.4 6.6 28.6 6.2" fill="none" stroke="#3c5246" stroke-width="1.1"/><path d="M21.8 3.6 Q18.4 3.2 16.8 5 M21.8 3.6 Q19.6 5.4 19.4 7.4" fill="none" stroke="#3c5246" stroke-width="1.1"/><circle cx="25.7" cy="7.6" r="1.5" fill="#1d6b4d" stroke-width="0.8"/><circle cx="19.3" cy="15.2" r="0.95" fill="none" stroke="#3c5246" stroke-width="1"/><circle cx="17.9" cy="19.2" r="0.95" fill="none" stroke="#3c5246" stroke-width="1"/><circle cx="17.5" cy="23.4" r="0.95" fill="none" stroke="#3c5246" stroke-width="1"/><circle cx="18.3" cy="27.4" r="0.95" fill="none" stroke="#3c5246" stroke-width="1"/></g></svg>`,
+  wP:`<svg viewBox="0 0 45 45"><g fill="#efeada" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 39 L33 39 L31.5 36.2 L13.5 36.2 Z"/><path d="M15.6 21.4 C11.8 22.4 9.4 20.4 9.3 17 M29.4 21.4 C33.2 22.4 35.6 20.4 35.7 17" fill="none" stroke-width="1.7"/><circle cx="9.3" cy="17" r="1.2"/><circle cx="35.7" cy="17" r="1.2"/><path d="M22.5 12.2 C18 12.2 14.8 15.7 14.8 19.9 C14.8 22.7 16.2 25.1 18.4 26.5 C15.4 28.1 13.5 31.1 13.5 34.5 L13.5 36.2 L31.5 36.2 L31.5 34.5 C31.5 31.1 29.6 28.1 26.6 26.5 C28.8 25.1 30.2 22.7 30.2 19.9 C30.2 15.7 27 12.2 22.5 12.2 Z"/><circle cx="22.5" cy="19.4" r="2.8" fill="#1d6b4d" stroke-width="1"/><path d="M22.5 17.3 C23 18.4 23 20.4 22.5 21.5 C22 20.4 22 18.4 22.5 17.3 Z" fill="#000" stroke="none"/></g></svg>`,
+  bK:`<svg viewBox="0 0 45 45"><g fill="#191d24" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 15 C9 12.5 6.5 7.5 8.5 2.5 C13.5 5 16 9.5 15.8 14 Z" stroke="#46554b"/><path d="M30.5 15 C36 12.5 38.5 7.5 36.5 2.5 C31.5 5 29 9.5 29.2 14 Z" stroke="#46554b"/><path d="M17.5 23.5 C13.5 26.5 11.5 31.5 11.5 36 L11.5 39 L33.5 39 L33.5 36 C33.5 31.5 31.5 26.5 27.5 23.5 Z"/><path d="M13.2 35.2 C19 33.4 26 33.4 31.8 35.2" fill="none" stroke="#8fd0a8" stroke-width="1.2"/><path d="M22.5 5.5 C16.5 5.5 13 10 13 15.5 C13 19 14.5 21.6 17 23.2 L28 23.2 C30.5 21.6 32 19 32 15.5 C32 10 28.5 5.5 22.5 5.5 Z" stroke="#46554b"/><path d="M16.2 22.8 Q14.5 28 11 30.5 Q15.5 31 17.8 27.5 Q18.8 25.3 18.3 22.8 Z" stroke="#46554b"/><path d="M20.3 23.2 Q19.2 29.5 16.8 32.8 Q21 32.5 22.3 28.6 Q23 26 22.4 23.2 Z" stroke="#46554b"/><path d="M24.7 23.2 Q25.8 29.5 28.2 32.8 Q24 32.5 22.7 28.6 Q22 26 22.6 23.2 Z" stroke="#46554b"/><path d="M28.8 22.8 Q30.5 28 34 30.5 Q29.5 31 27.2 27.5 Q26.2 25.3 26.7 22.8 Z" stroke="#46554b"/><circle cx="18.7" cy="14.8" r="1.7" fill="#8df0bb" stroke-width="0.8"/><circle cx="26.3" cy="14.8" r="1.7" fill="#8df0bb" stroke-width="0.8"/></g></svg>`,
+  bQ:`<svg viewBox="0 0 45 45"><g fill="#191d24" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 9.5 Q22 5 24 2.8 M17.6 10.8 Q14 6.5 14.8 3 M27.4 10.8 Q31 6.5 30.2 3 M13.8 13.2 Q9 10 8.6 5.6 M31.2 13.2 Q36 10 36.4 5.6" fill="none" stroke-width="1.7"/><circle cx="24" cy="2.8" r="1.5"/><circle cx="14.8" cy="3" r="1.5"/><circle cx="30.2" cy="3" r="1.5"/><circle cx="8.6" cy="5.6" r="1.5"/><circle cx="36.4" cy="5.6" r="1.5"/><path d="M19 18.5 C15.5 23 13.5 28.5 12.6 34.5 C12.3 36.3 12.2 37.6 12.2 38.6 Q14.2 37.1 16.4 38.6 Q18.6 40.1 20.5 38.6 Q22.5 37.1 24.5 38.6 Q26.4 40.1 28.6 38.6 Q30.8 37.1 32.8 38.6 C32.8 37.6 32.7 36.3 32.4 34.5 C31.5 28.5 29.5 23 26 18.5 Z"/><path d="M16.2 28.4 Q22.5 30.8 28.8 28.4" fill="none" stroke="#8fd0a8" stroke-width="1.2"/><circle cx="22.5" cy="14.5" r="6" stroke="#46554b"/><circle cx="19.7" cy="14.8" r="1.35" fill="#8df0bb" stroke-width="0.8"/><circle cx="25.3" cy="14.8" r="1.35" fill="#8df0bb" stroke-width="0.8"/><circle cx="22.5" cy="11.9" r="1.2" fill="#8df0bb" stroke-width="0.8"/></g></svg>`,
+  bR:`<svg viewBox="0 0 45 45"><g fill="#191d24" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 39 L34.5 39 L32.5 35.8 L12.5 35.8 Z"/><path d="M14.2 35.8 L15.8 31.5 L14.8 14 L12.6 12 L14.2 6.2 L17.8 9 L20.2 4.2 L22.9 8 L25.6 3.8 L28 8.6 L31.4 5.8 L32.4 12 L30.2 14 L29.2 31.5 L30.8 35.8 Z"/><path d="M22.5 17.5 C25.2 19.2 26.4 21.4 26.4 23.6 C26.4 25.8 25.2 28 22.5 29.7 C19.8 28 18.6 25.8 18.6 23.6 C18.6 21.4 19.8 19.2 22.5 17.5 Z" fill="#8df0bb" stroke-width="1.1"/><path d="M22.5 19.8 C23.1 21.2 23.1 26 22.5 27.4 C21.9 26 21.9 21.2 22.5 19.8 Z" fill="#000" stroke="none"/><path d="M17.2 32.5 L19.3 30.2 M28 31.8 L26 29.6 M16.4 12.6 L18.4 14.8" fill="none" stroke="#8fd0a8" stroke-width="1.1"/></g></svg>`,
+  bB:`<svg viewBox="0 0 45 45"><g fill="#191d24" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 39 L34 39 L32 35.6 L13 35.6 Z"/><path d="M22.5 4.8 C18 7.4 15.6 11.4 15.6 16 L15.6 25.6 C13.6 27.2 12.2 29.4 12.2 31.8 L12.2 33.6 L32.8 33.6 L32.8 31.8 C32.8 29.4 31.4 27.2 29.4 25.6 L29.4 16 C29.4 11.4 27 7.4 22.5 4.8 Z"/><path d="M22.5 8.8 C19.6 10.8 18.1 13.4 18.1 16.4 C18.1 18.5 19.1 20.2 20.6 21.2 L24.4 21.2 C25.9 20.2 26.9 18.5 26.9 16.4 C26.9 13.4 25.4 10.8 22.5 8.8 Z" fill="#0a0e0b" stroke-width="1.1"/><circle cx="20.7" cy="15.8" r="1.15" fill="#8df0bb" stroke="none"/><circle cx="24.3" cy="15.8" r="1.15" fill="#8df0bb" stroke="none"/><path d="M16.2 26.4 L28.8 26.4 M24.6 26.4 Q25.2 29.4 23.8 31.6" fill="none" stroke="#8fd0a8" stroke-width="1.2"/></g></svg>`,
+  bN:`<svg viewBox="0 0 45 45"><g fill="#191d24" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 39 L35 39 L33 35.8 L12 35.8 Z"/><path d="M13.5 35.8 C11.2 33 11.8 29.4 14.8 28 C13.4 21.4 15.6 14.8 20.4 10.6 C22.3 8.9 23.2 6.9 22.6 4.6 L21.6 2.6 C26.2 2.2 29.8 4.9 30.6 8.9 C31.3 12.4 29.8 15.6 27.2 17.9 C23.8 20.9 22 24.5 22.5 28.6 C26.4 28.2 30.2 30.3 31.2 34.2 L31.6 35.8 Z"/><path d="M24.8 3.4 Q26.6 1.4 29 1.8 Q28 3.4 28.4 5.2 Z" stroke="#46554b"/><path d="M22.4 5.6 Q25.4 6.6 28.6 6.2" fill="none" stroke="#8fd0a8" stroke-width="1.1"/><path d="M21.8 3.6 Q18.4 3.2 16.8 5 M21.8 3.6 Q19.6 5.4 19.4 7.4" fill="none" stroke="#8fd0a8" stroke-width="1.1"/><circle cx="25.7" cy="7.6" r="1.5" fill="#8df0bb" stroke-width="0.8"/><circle cx="19.3" cy="15.2" r="0.95" fill="none" stroke="#8fd0a8" stroke-width="1"/><circle cx="17.9" cy="19.2" r="0.95" fill="none" stroke="#8fd0a8" stroke-width="1"/><circle cx="17.5" cy="23.4" r="0.95" fill="none" stroke="#8fd0a8" stroke-width="1"/><circle cx="18.3" cy="27.4" r="0.95" fill="none" stroke="#8fd0a8" stroke-width="1"/></g></svg>`,
+  bP:`<svg viewBox="0 0 45 45"><g fill="#191d24" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 39 L33 39 L31.5 36.2 L13.5 36.2 Z"/><path d="M15.6 21.4 C11.8 22.4 9.4 20.4 9.3 17 M29.4 21.4 C33.2 22.4 35.6 20.4 35.7 17" fill="none" stroke-width="1.7"/><circle cx="9.3" cy="17" r="1.2"/><circle cx="35.7" cy="17" r="1.2"/><path d="M22.5 12.2 C18 12.2 14.8 15.7 14.8 19.9 C14.8 22.7 16.2 25.1 18.4 26.5 C15.4 28.1 13.5 31.1 13.5 34.5 L13.5 36.2 L31.5 36.2 L31.5 34.5 C31.5 31.1 29.6 28.1 26.6 26.5 C28.8 25.1 30.2 22.7 30.2 19.9 C30.2 15.7 27 12.2 22.5 12.2 Z"/><circle cx="22.5" cy="19.4" r="2.8" fill="#8df0bb" stroke-width="1"/><path d="M22.5 17.3 C23 18.4 23 20.4 22.5 21.5 C22 20.4 22 18.4 22.5 17.3 Z" fill="#000" stroke="none"/></g></svg>`,
+};
+let SVG = CLASSIC;   // swapped by applyTheme()
 const PIECE_POINTS = { P: 1, N: 3, B: 3, R: 5, Q: 9, K: 0 };
 
 /* ── opening book (name recognition) ─────────────────────────────────────── */
@@ -1754,7 +1774,7 @@ try {
   if (['beginner', 'casual', 'club', 'master', '2p'].includes(raw.mode)) settings.mode = raw.mode;
   if (['w', 'b', 'r'].includes(raw.side)) settings.side = raw.side;
   if (['600', '300', 'inf'].includes(raw.tc)) settings.tc = raw.tc;
-  if (['walnut', 'midnight', 'emerald', 'slate'].includes(raw.theme)) settings.theme = raw.theme;
+  if (['walnut', 'midnight', 'emerald', 'slate', 'lovecraft'].includes(raw.theme)) settings.theme = raw.theme;
   if (typeof raw.sound === 'boolean') settings.sound = raw.sound;
 } catch (e) { /* fresh start */ }
 function saveSettings() {
@@ -2669,11 +2689,20 @@ $('tc-sel').addEventListener('change', () => {
   settings.tc = $('tc-sel').value; saveSettings();
   confirmIfPlaying('Apply the new time control to a fresh game?', newGame);
 });
+function applyTheme() {
+  document.body.dataset.board = settings.theme;
+  const want = settings.theme === 'lovecraft' ? LOVECRAFT : CLASSIC;
+  if (SVG !== want) {
+    SVG = want;
+    rebuildPieces(viewBoard());
+    renderCaptures(); refreshCards();
+  }
+}
 $('theme-sel').value = settings.theme;
-document.body.dataset.board = $('theme-sel').value;
+applyTheme();
 $('theme-sel').addEventListener('change', () => {
   settings.theme = $('theme-sel').value; saveSettings();
-  document.body.dataset.board = settings.theme;
+  applyTheme();
 });
 function renderSoundBtn() {
   $('sound-btn').textContent = settings.sound ? '♪' : '∅';
