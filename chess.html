@@ -2265,7 +2265,6 @@ function renderMoves() {
 }
 
 function colorOfCard(which) {
-  if (mode === '2p') return which === 'top' ? 'b' : 'w';
   return which === 'top' ? (humanColor === 'w' ? 'b' : 'w') : humanColor;
 }
 function renderCaptures() {
@@ -2589,8 +2588,7 @@ function setupGame() {
   viewPly = 0; selected = null; selMoves = [];
   gameStart = Date.now();
   humanColor = settings.side === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : settings.side;
-  if (mode === '2p') humanColor = 'w';
-  flipped = mode !== '2p' && humanColor === 'b';
+  flipped = humanColor === 'b';   // in 2P, humanColor is Player 1 (bottom)
   $('over-modal').classList.remove('open');
   $('promo-modal').classList.remove('open');
   $('live-banner').classList.remove('show');
@@ -2614,7 +2612,7 @@ function updateStartCard() {
   const md = MODES[mode];
   const tc = $('tc-sel').selectedOptions[0] ? $('tc-sel').selectedOptions[0].text : '';
   $('start-sub').textContent = mode === '2p'
-    ? 'Two players · hot-seat · ' + tc
+    ? `Two players · hot-seat · Player 1 is ${humanColor === 'w' ? 'White' : 'Black'} · ${tc}`
     : `Regicide Engine · ${md.label} ${md.elo} Elo · You play ${humanColor === 'w' ? 'White' : 'Black'} · ${tc}`;
   $('name-input').value = settings.username === 'Player' ? '' : settings.username;
   $('name-err').textContent = '';
