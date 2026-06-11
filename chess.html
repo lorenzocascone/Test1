@@ -1940,7 +1940,8 @@ function recordResult(outcome) {
 function renderLeaderboard() {
   const list = $('lb-list');
   list.textContent = '';
-  const board = loadBoard().sort((a, b) => b.p - a.p || b.w - a.w).slice(0, 8);
+  // rank by earned points, then overall record: fewer losses beats more
+  const board = loadBoard().sort((a, b) => b.p - a.p || a.l - b.l || b.w - a.w).slice(0, 8);
   if (!board.length) {
     const d = document.createElement('div');
     d.id = 'lb-empty';
@@ -2896,7 +2897,7 @@ $('btn-review').addEventListener('click', () => $('over-modal').classList.remove
 $('btn-undo').addEventListener('click', undo);
 $('btn-flip').addEventListener('click', flip);
 $('btn-resign').addEventListener('click', () => {
-  if (gameOver || !moveRecord.length) return;
+  if (gameOver || !started) return;
   const loser = mode === '2p' ? turnColor() : humanColor;
   ask('Resign this game?', () => endGame('resign', loser === 'w' ? 'b' : 'w'));
 });
