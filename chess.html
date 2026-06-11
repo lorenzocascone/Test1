@@ -1747,9 +1747,15 @@ const MODES = {
 };
 
 /* ── settings (persisted) ────────────────────────────────────────────────── */
-let settings = { mode: 'club', side: 'w', tc: '600', theme: 'walnut', sound: true };
+const settings = { mode: 'club', side: 'w', tc: '600', theme: 'walnut', sound: true };
 try {
-  Object.assign(settings, JSON.parse(localStorage.getItem('regicide') || '{}'));
+  // copy only known keys and only valid values — localStorage is not trusted state
+  const raw = JSON.parse(localStorage.getItem('regicide') || '{}');
+  if (['beginner', 'casual', 'club', 'master', '2p'].includes(raw.mode)) settings.mode = raw.mode;
+  if (['w', 'b', 'r'].includes(raw.side)) settings.side = raw.side;
+  if (['600', '300', 'inf'].includes(raw.tc)) settings.tc = raw.tc;
+  if (['walnut', 'midnight', 'emerald', 'slate'].includes(raw.theme)) settings.theme = raw.theme;
+  if (typeof raw.sound === 'boolean') settings.sound = raw.sound;
 } catch (e) { /* fresh start */ }
 function saveSettings() {
   try { localStorage.setItem('regicide', JSON.stringify(settings)); } catch (e) { /* private mode */ }
@@ -1839,7 +1845,7 @@ let gameStart = Date.now();
 let searchToken = 0, evalSeq = 0, lastEvalId = '', hintId = '';
 let selected = null, selMoves = [];
 let flipped = false;
-let hintInfo = null, hintTimer = null, hintPly = -1;
+let hintInfo = null, hintTimer = null, hintLo = 0, hintHi = 0;
 let lastWhiteEval = 0;
 let engineThinking = false;
 
@@ -1951,6 +1957,7 @@ function applyMoveDOM(info, dir, instant) {
     if (info.promo) {
       const code = info.piece[0] + info.promo;
       const swap = () => {
+        if (pieceEls.get(info.to) !== el) return; // user navigated away mid-animation
         el.innerHTML = `<div class="pc">${SVG[code]}</div>`;
         el.dataset.code = code;
         el.classList.add('pop');
@@ -2222,7 +2229,7 @@ evalWorker.onmessage = (e) => {
   if (d.id === hintId) {
     if (d.type !== 'best') return;
     hintId = '';
-    if (!d.move || !isLive() || gameOver || moveRecord.length !== hintPly) return;
+    if (!d.move || !isLive() || gameOver || game.hashLo() !== hintLo || game.hashHi() !== hintHi) return;
     hintInfo = game.moveInfo(d.move);
     drawArrows();
     clearTimeout(hintTimer);
@@ -2316,6 +2323,7 @@ function endGame(reason, winner) {
   if (gameOver) return;
   gameOver = { reason, winner };
   searchToken++;
+  lastEvalId = ''; hintId = '';
   engineThinking = false;
   stopClocks();
   selected = null; selMoves = [];
@@ -2368,6 +2376,7 @@ function newGame() {
   flipped = mode !== '2p' && humanColor === 'b';
   $('over-modal').classList.remove('open');
   $('promo-modal').classList.remove('open');
+  $('live-banner').classList.remove('show');
   resetClocks();
   startClockFor('w');
   lastTickSecond = -1;
@@ -2400,6 +2409,7 @@ function undo() {
   viewPly = target;
   selected = null; selMoves = [];
   hintInfo = null; drawArrows();
+  $('live-banner').classList.remove('show');
   rebuildPieces(liveBoard());
   updateSquares(); renderMoves(); renderCaptures(); detectOpening();
   startClockFor(turnColor());
@@ -2413,10 +2423,11 @@ function setView(p) {
   p = Math.max(0, Math.min(liveLen(), p));
   if (p === viewPly) return;
   selected = null; selMoves = [];
-  if (p === viewPly + 1) applyMoveDOM(infoRecord[viewPly], 1, false);
-  else if (p === viewPly - 1) applyMoveDOM(infoRecord[p], -1, false);
-  else { viewPly = p; rebuildPieces(viewBoard()); }
+  const step = p - viewPly;
+  if (step === 1) applyMoveDOM(infoRecord[viewPly], 1, false);
+  else if (step === -1) applyMoveDOM(infoRecord[p], -1, false);
   viewPly = p;
+  if (step !== 1 && step !== -1) rebuildPieces(viewBoard());
   $('live-banner').classList.toggle('show', !isLive());
   updateSquares(); renderMoves(); renderCaptures(); drawArrows();
 }
@@ -2458,6 +2469,7 @@ function tryMove(from, to, opts) {
 
 boardEl.addEventListener('pointerdown', (e) => {
   SND.unlock();
+  if (drag) return;
   if (e.button !== 0 && e.pointerType === 'mouse') return;
   const sq = sqFromEvent(e);
   if (sq < 0) return;
@@ -2628,7 +2640,7 @@ $('btn-resign').addEventListener('click', () => {
 $('btn-hint').addEventListener('click', () => {
   if (gameOver || !humanTurn() || !isLive()) return;
   hintId = 'h' + (++evalSeq);
-  hintPly = moveRecord.length;
+  hintLo = game.hashLo(); hintHi = game.hashHi();
   evalWorker.postMessage({
     cmd: 'go', id: hintId, fen: START_FEN, moves: moveRecord.slice(),
     movetime: 420, maxDepth: 16, skill: 4
@@ -2657,7 +2669,7 @@ $('tc-sel').addEventListener('change', () => {
   settings.tc = $('tc-sel').value; saveSettings();
   confirmIfPlaying('Apply the new time control to a fresh game?', newGame);
 });
-$('theme-sel').value = ['walnut','midnight','emerald','slate'].includes(settings.theme) ? settings.theme : 'walnut';
+$('theme-sel').value = settings.theme;
 document.body.dataset.board = $('theme-sel').value;
 $('theme-sel').addEventListener('change', () => {
   settings.theme = $('theme-sel').value; saveSettings();
